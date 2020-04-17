@@ -10,7 +10,7 @@ app.get("/", (request, response) =>
         });
 app.listen(process.env.PORT);
 setInterval(() => {
-  http.get(`http://fourth-mud-beat.glitch.me`);
+  http.get(`http://{process.env.PROJECT_DOMAIN}.glitch.me`);
 }, 280000);
 
 // كل البكجات الي ممكن تحتجها في اي بوت
@@ -124,159 +124,196 @@ client.on("message", message => {
 
 // profile 
 
-const botconfig = require("./botconfig.json");
-const bot = new Discord.Client({disableEveryone: true});
-var Jimp = require("jimp");
-const SQLite = require("better-sqlite3");
-const sql = new SQLite('./profile.sqlite');
-bot.commands = new Discord.Collection();
-
-
-fs.readdir("./commands/", (err, files) => {
-
-  if(err) console.log(err);
-  let jsfile = files.filter(f => f.split(".").pop() === "js");
-  if(jsfile.length <= 0){
-    console.log("Couldn't find commands.");
-    return;
-  }
-
-  jsfile.forEach((f, i) =>{
-    let props = require(`./commands/${f}`);
-    console.log(`${f} loaded!`);
-    bot.commands.set(props.help.name, props);
-  });
-});
-
-fs.readdir("./others/", (err, files) => {
-
-  if(err) console.log(err);
-  let jsfile = files.filter(f => f.split(".").pop() === "js");
-  if(jsfile.length <= 0){
-    console.log("Couldn't find commands.");
-    return;
-  }
-
-  jsfile.forEach((f, i) =>{
-    let props = require(`./others/${f}`);
-    console.log(`${f} loaded!`);
-  });
-});
-
-bot.on("ready", async () => {
-  const profile = sql.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'profile';").get();
-  if (!profile['count(*)']) {
-    
-    sql.prepare("CREATE TABLE profile (UserID TEXT PRIMARY KEY, GuildID TEXT, xp INTEGER, lvl INTEGER, coins INTEGER, bg INTEGER, note TEXT, likes INTEGER, rep INTEGER, w0 INTEGER, w1 INTEGER, w2 INTEGER, w3 INTEGER, w4 INTEGER, w5 INTEGER);").run();
-  }
-  const rep = sql.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'rep';").get();
-  if (!rep['count(*)']) {
-    
-    sql.prepare("CREATE TABLE rep (UserID, LikedUser TEXT PRIMARY KEY, GuildID TEXT, Time TEXT);").run();
-  }
-  const liked = sql.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'liked';").get();
-  if (!liked['count(*)']) {
-    
-    sql.prepare("CREATE TABLE liked (UserID, LikedUser TEXT PRIMARY KEY, GuildID TEXT, Time TEXT);").run();
-  }
-
-  const about = sql.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'about';").get();
-  if (!about['count(*)']) {
-    
-    sql.prepare("CREATE TABLE about (UserID TEXT PRIMARY KEY, career TEXT, age TEXT, club TEXT, model TEXT, study TEXT, future TEXT, life TEXT, words TEXT);").run();
-  }
-
-  
-  bot.setInterval(() =>{
-    let d = Date.now()
-  
-   let rep = sql.prepare(`SELECT * FROM rep`).all()
-      if(!rep)return;
-      for (var i = 0; i < rep.length ; i++){
-        if(rep[i].Time < d){
-          sql.prepare(`DELETE FROM rep WHERE UserID = '${rep[i].UserID}' AND Time = ${rep[i].Time}`).run();
-          
+const profile = JSON.parse(fs.readFileSync("profile.json", "utf8"));
+ 
+ 
+ client.on('message', message => {
+          if(!profile[message.author.id]) profile[message.author.id] ={
+              points: 0,
+              level: 1,
+              rep: 0,
+              tite: "No Title"
+          };
+          if(message.author.bot) return;
+          profile[message.author.id].points = Math.floor(profile[message.author.id].points+1);
+          if(profile[message.author.id].points > 250) {
+              profile[message.author.id].points = 0
+              profile[message.author.id].level = Math.floor(profile[message.author.id].level+1);
+              message.channel.send(`**${message.author.username}, You leveld up to __${profile[message.author.id].level}__**`)
+          }
+          fs.writeFile('profile.json', JSON.stringify(profile), (err) => {
+if (err) console.error(err);
+})
+      })
+ 
+    client.on('message', message => {
+        let tit = message.content.split(" ").slice(1).join(" ");
+        if(message.content.startsWith(prefix + "title")) {
+        if(!profile[message.author.id].tite) profile[message.author.id].tite = "Hey im using Super"
+        if(!tit) {
+            message.channel.send("**Usage: <title <something>**");
+        } else {
+            profile[message.author.id].tite = tit
+            message.channel.send(`:ok:`)
         }
+        }
+        fs.writeFile('profile.json', JSON.stringify(profile), (err) => {
+if (err) console.error(err);
+})
+    })
+ 
+client.on('message', message => {
+ 
+    if(message.content.startsWith(prefix + 'rep')) {
+      if(!message.channel.guild) return;
+                    moment.locale('en');
+                  var getvalueof = message.mentions.users.first()
+                    if(!getvalueof) return message.channel.send(`**:mag: |  ${message.author.username}, the user could not be found.    **`);
+                       if(getvalueof.id == message.author.id) return message.channel.send(`**${message.author.username}, you cant give yourself a reputation !**`)
+    if(profile[message.author.id].reps != moment().format('L')) {
+            profile[message.author.id].reps = moment().format('L');
+            profile[getvalueof.id].rep = Math.floor(profile[getvalueof.id].rep+1);
+         message.channel.send(`** :up:  |  ${message.author.username} has given ${getvalueof} a reputation point!**`)
+        } else {
+         message.channel.send(`**:stopwatch: |  ${message.author.username}, you can raward more reputation  ${moment().endOf('day').fromNow()} **`)
+        }
+       }
+       fs.writeFile('profile.json', JSON.stringify(profile), (err) => {
+if (err) console.error(err);
+})
+});
+ 
+    client.on("message", message => {
+  if (message.author.bot) return;
+    if(!message.channel.guild) return;
+if (message.content.startsWith(prefix + "profile")) {
+                               let user = message.mentions.users.first();
+         var men = message.mentions.users.first();
+            var heg;
+            if(men) {
+                heg = men
+            } else {
+                heg = message.author
+            }
+          var mentionned = message.mentions.members.first();
+             var h;
+            if(mentionned) {
+                h = mentionned
+            } else {
+                h = message.member
+            }
+            var ment = message.mentions.users.first();
+            var getvalueof;
+            if(ment) {
+              getvalueof = ment;
+            } else {
+              getvalueof = message.author;
+            }
+   var mentionned = message.mentions.users.first();
+  let mention = message.mentions.users.first() || message.author;
+ 
+    var client;
+      if(mentionned){
+          var client = mentionned;
+      } else {
+          var client = message.author;
+ 
       }
-  }, 5000)
-  
-});
-
-
-function generateXp() {
-  let min = 2
-  let max = 7
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+if (!profile[getvalueof.id]) profile[getvalueof.id] = {points: 0,reps: "No Reps", credits: 1, level: 1,tite: "Earth Bot User", rep: 0, lastDaily: "NOT COLLECTED"};
+            let Image = Canvas.Image,
+            canvas = new Canvas.createCanvas(300, 300),
+            ctx = canvas.getContext('2d');
+            fs.readFile("Pic.jpg", function (err, Background) { //امتداد الصورة
+            if (err) return console.log(err);
+            let BG = Canvas.Image;
+            let ground = new Image;
+            ground.src = Background;
+            ctx.drawImage(ground, 0, 0, 300, 300); // حجم الصورة
+ 
+})
+ 
+ 
+ 
+ 
+                let url = getvalueof.displayAvatarURL.endsWith(".webp") ? getvalueof.displayAvatarURL.slice(5, -20) + ".png" : getvalueof.displayAvatarURL;
+                jimp.read(url, (err, ava) => {
+                    if (err) return console.log(err);
+                    ava.getBuffer(jimp.MIME_PNG, (err, buf) => {
+                        if (err) return console.log(err);
+ 
+                        //ur name
+                        ctx.font = 'bold 16px kathen'; // حجم الخط و نوعه
+                        ctx.fontSize = '40px'; // عرض الخط
+                        ctx.fillStyle = "#000000"; // لون الخط
+                        ctx.textAlign = "center"; // محاذا ة النص
+                        ctx.fillText(`${getvalueof.username}`, 153, 104) // احداثيات اسمك
+ 
+                        //ur name
+                        ctx.font = 'bold 16px kathen'; // حجم الخط و نوعه
+                        ctx.fontSize = '40px'; // عرض الخط
+                        ctx.fillStyle = "#f1f1f1"; // لون الخط
+                        ctx.textAlign = "center"; // محاذا ة النص
+                        ctx.fillText(`${getvalueof.username}`, 151, 102) // احداثيات اسمك
+ 
+                        //credit
+                        ctx.font = "bold 10px kathen" // نوع الخط وحجمه
+                        ctx.fontSize = '10px'; // عرض الخط
+                        ctx.fillStyle = "#f1f1f1" // لون الخط
+                        ctx.textAlign = "center"; // محاذا ة النص
+                        ctx.fillText(`$${credits[mention.id].credits}`, 230, 182) // احداثيات المصاري
+ 
+ 
+                        ctx.font = "bold 14px kathen" // نوع الخط وحجمه
+                        ctx.fontSize = '12px'; // عرض الخط
+                        ctx.fillStyle = "#f1f1f1" // لون الخط
+                        ctx.textAlign = "center"; // محاذا ة النص
+                        ctx.fillText(`${profile[mention.id].tite}`, 150, 130) // احداثيات المصاري
+ 
+                        //Level
+                        ctx.font = "bold 24px kathen" // نوع الخط و حجمه
+                        ctx.fontSize = '10px'; // عرض الخط
+                        ctx.fillStyle = "#f1f1f1" // لون الخط
+                        ctx.textAlign = "center"; // محاذا ة النص
+                        ctx.fillText(`${profile[getvalueof.id].level}`, 70, 78) // احداثيات اللفل
+ 
+                         //info
+                        ctx.font = "bold 12px kathen" // ن
+                        ctx.fontSize = '15px'; // عرض الخطوع الخط وحجمه
+                        ctx.fillStyle = "#000000" // لون الخط
+                        ctx.textAlign = "center"; // محاذا ة النص
+                        ctx.fillText(`${profile[getvalueof.id].points}/250`, 150, 232) // احداثيات النقاط
+ 
+                        //info
+                        ctx.font = "bold 12px kathen" // ن
+                        ctx.fontSize = '15px'; // عرض الخطوع الخط وحجمه
+                        ctx.fillStyle = "#f1f1f1" // لون الخط
+                        ctx.textAlign = "center"; // محاذا ة النص
+                        ctx.fillText(`${profile[getvalueof.id].points}/250`, 150, 232) // احداثيات النقاط
+ 
+                        // REP
+                        ctx.font = "bold 20px  kathen";
+                        ctx.fontSize = "50px";
+                        ctx.fillStyle = "#f1f1f1";
+                        ctx.textAlign = "center";
+                        ctx.fillText(`+${profile[mention.id].rep}`, 225, 76)
+ 
+                        let Avatar = Canvas.Image;
+                        let ava = new Avatar;
+ 
+ava.src = buf;
+                        ctx.beginPath();
+                        ctx.arc(75, 100, 780, 0, Math.PI*2, true);
+                        ctx.closePath();
+                        ctx.clip();
+                        ctx.drawImage(ava, 110, 29, 82, 60);
+ 
+message.channel.startTyping()
+message.channel.sendFile(canvas.toBuffer())
+message.channel.stopTyping()
+})
+})
 }
-
-
-
-bot.on("message", async message => {
-if (message.author.bot) return;
-if (message.channel.type ==="dm") return;
-
-let coinAmt = Math.floor(Math.random() * 3) + 1;
-let baseAmt = Math.floor(Math.random() * 3) + 1;
-
-  let profile = sql.prepare(`SELECT * FROM profile WHERE UserID = '${message.author.id}'`).get()
-
-  let sqlstr;
-
-  if(!profile){
-    sqlstr = `INSERT INTO profile (UserID, GuildID, xp, lvl, coins, bg, note, likes, rep, w0, w1, w2, w3, w4, w5) VALUES ('${message.author.id}', '${message.guild.id}', ${generateXp()}, '1', '0', '1', 'لايوجد', '0', '0', '1', '0', '0', '0', '0', '0')`
-  }
-  else if(coinAmt === baseAmt){
-    let coins = profile.coins
-    let xp = profile.xp
-    sqlstr = `UPDATE profile SET coins = ${coins + coinAmt}, xp = ${xp + generateXp()} WHERE UserID = '${message.author.id}'`;
-    sql.prepare(sqlstr).run();
-  }
-  else{
-    let xp = profile.xp
-    sqlstr = `UPDATE profile SET xp = ${xp + generateXp()} WHERE UserID = '${message.author.id}'`;
-    sql.prepare(sqlstr).run();
-    let curlvl = profile.lvl;
-    let nxtLvl = profile.lvl * 1000;
-    if(nxtLvl <= profile.xp){
-      sqlstr = `UPDATE profile SET lvl = ${curlvl + 1} WHERE UserID = '${message.author.id}'`;
-      sql.prepare(sqlstr).run();
-      let lvlico = message.author.displayAvatarURL;
-    let lvlup = new Discord.RichEmbed()
-    .setAuthor(message.author.username, message.author.displayAvatarURL)
-    .setThumbnail(lvlico)
-    .setTitle("LEVEL UP.")
-    .setColor("#6E0A51")
-    .addField("Your LEVEL: ", curlvl + 1);
-
-    message.channel.send(lvlup).then(msg => {msg.delete(5000)});
-    }
-  }
-  sql.prepare(sqlstr).run();
-
-let about = sql.prepare(`SELECT * FROM about WHERE UserID = '${message.author.id}'`).get()
-
-
-
-  if(!about){
-    sqlstr = `INSERT INTO about (UserID, career, age, club, model, study, future, life, words) VALUES ('${message.author.id}', '#منصبي', '#عمري', '#نادي', '#قدوتي', '#تخصصي', '#طموحي', '#حكمتي', '#خاطري')`
-     sql.prepare(sqlstr).run();
-  }
-
-
-  let prefix = botconfig.prefix;
-  let messageArray = message.content.split(" ");
-  //if (message.content.startsWith("Turki Pasha")) return message.reply({files: ["https://cdn.discordapp.com/attachments/417087715444523010/430350204168962050/image.png"]});
-  //if (message.content.toString()== ".") return message.channel.send("y");
-  if (!message.content.startsWith(prefix)) return;
-  let cmd = messageArray[0];
-  let args = messageArray.slice(1);
-  let commandfile = bot.commands.get(cmd.slice(prefix.length));
-  if(commandfile) commandfile.run(bot,message,args, sql);
-
-
 });
-
-
 // اسرع
 
 client.on('message', message => {
